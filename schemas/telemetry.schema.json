@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/iot-ops/telemetry.schema.json",
+  "title": "IoT operations telemetry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "device_id",
+    "timestamp",
+    "sequence",
+    "signal_strength_dbm",
+    "connectivity",
+    "metrics",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "signal_strength_dbm": {
+      "type": "number",
+      "minimum": -120,
+      "maximum": -20
+    },
+    "connectivity": {
+      "enum": [
+        "online",
+        "offline"
+      ]
+    },
+    "quality": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "anomaly",
+          "sensor_failure",
+          "pump_fault",
+          "offline"
+        ]
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "temperature_c",
+        "humidity_pct",
+        "soil_moisture_pct",
+        "light_lux",
+        "tank_level_pct",
+        "pump_state",
+        "battery_pct"
+      ],
+      "properties": {
+        "temperature_c": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -50,
+          "maximum": 100
+        },
+        "humidity_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "soil_moisture_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "light_lux": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 150000
+        },
+        "tank_level_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "pump_state": {
+          "enum": [
+            "on",
+            "off",
+            "fault"
+          ]
+        },
+        "battery_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    }
+  }
+}

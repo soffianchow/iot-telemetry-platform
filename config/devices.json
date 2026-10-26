@@ -1,0 +1,115 @@
+{
+  "description": "Ten virtual assets; cycles accelerate environmental dynamics for demonstration.",
+  "devices": [
+    {
+      "device_id": "device-001",
+      "faults": [
+        {
+          "kind": "anomaly",
+          "start_cycle": 8,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-002",
+      "faults": [
+        {
+          "kind": "offline",
+          "start_cycle": 9,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-003",
+      "faults": [
+        {
+          "kind": "sensor_failure",
+          "start_cycle": 10,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-004",
+      "faults": [
+        {
+          "kind": "missing",
+          "start_cycle": 11,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-005",
+      "faults": [
+        {
+          "kind": "pump_fault",
+          "start_cycle": 12,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-006",
+      "faults": [
+        {
+          "kind": "anomaly",
+          "start_cycle": 13,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-007",
+      "faults": [
+        {
+          "kind": "offline",
+          "start_cycle": 14,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-008",
+      "faults": [
+        {
+          "kind": "sensor_failure",
+          "start_cycle": 15,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-009",
+      "faults": [
+        {
+          "kind": "missing",
+          "start_cycle": 16,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    },
+    {
+      "device_id": "device-010",
+      "faults": [
+        {
+          "kind": "pump_fault",
+          "start_cycle": 17,
+          "duration_cycles": 3,
+          "repeat_every": 60
+        }
+      ]
+    }
+  ]
+}

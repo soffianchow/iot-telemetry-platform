@@ -1,0 +1,38 @@
+name: Validate Phase 1
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.9.5'
+      - run: uv sync --frozen --python 3.11 --extra dev
+      - run: uv run pytest -q tests/unit
+      - run: uv run pytest -q infra/terraform/modules/lambda/test_handler.py
+      - run: uv run python infra/terraform/build_lambda.py
+  mqtt-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/test-docker.sh
+      - if: always()
+        run: docker compose -p iot-ops-test logs --tail=100
+      - if: always()
+        run: docker compose -p iot-ops-test down -v
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.8
+      - run: terraform -chdir=infra/terraform fmt -check -recursive
+      - run: terraform -chdir=infra/terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform -chdir=infra/terraform validate

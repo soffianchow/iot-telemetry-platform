@@ -1,0 +1,58 @@
+name: iot-ops-lab
+x-app: &app
+  image: iot-ops-lab:local
+  build: .
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  environment:
+    MQTT_HOST: broker
+    MQTT_PORT: '1883'
+  depends_on:
+    broker:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options:
+      max-size: 5m
+      max-file: '2'
+services:
+  broker:
+    image: eclipse-mosquitto:2.0.22
+    ports:
+      - '127.0.0.1:${MQTT_PORT:-1883}:1883'
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - broker-data:/mosquitto/data
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, mosquitto_pub, -h, localhost, -t, health, -m, ok]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: '2'
+  processor:
+    <<: *app
+    command: [consume, --db, /data/telemetry.db]
+    volumes:
+      - telemetry:/data
+    restart: unless-stopped
+  simulator:
+    <<: *app
+    command: [simulate, --config, config/devices.json, --interval, '2']
+    restart: unless-stopped
+  tests:
+    <<: *app
+    profiles: [test]
+    entrypoint: [python, -m, pytest]
+    command: [-q, -o, cache_dir=/tmp/pytest-cache, tests]
+volumes:
+  telemetry:
+  broker-data:

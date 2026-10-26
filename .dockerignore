@@ -1,0 +1,11 @@
+# Allowlist: only send what the image build needs
+*
+!pyproject.toml
+!requirements.lock.txt
+!src/
+!schemas/
+!config/
+!tests/
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
