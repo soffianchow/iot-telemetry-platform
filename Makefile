@@ -1,4 +1,4 @@
-.PHONY: setup test integration up down status terraform
+.PHONY: setup test integration up receiver panel down status terraform
 setup:
 	uv sync --python 3.11 --extra dev
 test:
@@ -7,6 +7,11 @@ integration:
 	./scripts/test-docker.sh
 up:
 	docker compose up -d --build broker processor simulator
+receiver:
+	docker compose up -d --build broker processor
+	docker compose stop simulator
+panel:
+	uv run python -m iot_ops panel --config config/panel-devices.json
 down:
 	docker compose down
 status:

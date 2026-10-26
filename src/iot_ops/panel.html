@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1714">
+<title>Sensor Panel</title>
+<style>
+:root {
+  --bg: #f4f6f3; --card: #ffffff; --ink: #18211d; --muted: #63706a; --line: #dde3de;
+  --accent: #1f7a4d; --accent-ink: #ffffff; --warn: #b4540a; --bad: #b42318; --ok: #1f7a4d;
+  --chip: #e9eee9;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1714; --card: #18221e; --ink: #e7eee9; --muted: #95a39b; --line: #2b3832;
+    --accent: #3fb47a; --accent-ink: #0b130f; --warn: #f0a04b; --bad: #f2786b; --ok: #3fb47a;
+    --chip: #22302a;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 120px max(16px, env(safe-area-inset-left));
+}
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+h1 { font-size: 22px; margin: 0; flex: 1; }
+.pill { padding: 6px 12px; border-radius: 999px; background: var(--chip); font-size: 14px; font-weight: 600; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); }
+.tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 16px; }
+.tab {
+  min-height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); font: inherit; font-weight: 600; white-space: nowrap;
+}
+.tab small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: -2px; }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tab[aria-selected="true"] small { color: var(--accent-ink); opacity: .8; }
+.grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 700px) { .grid { grid-template-columns: 1fr 1fr; } }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.card h2.spaced { margin-top: 18px; }
+.card h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 12px; }
+.field { margin-bottom: 18px; }
+.field:last-child { margin-bottom: 0; }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.row label { font-weight: 600; }
+.value { font-variant-numeric: tabular-nums; font-weight: 700; }
+.value.out { color: var(--warn); }
+.hint { font-size: 13px; color: var(--muted); }
+input[type=range] { width: 100%; height: 44px; accent-color: var(--accent); }
+select {
+  width: 100%; min-height: 48px; font: inherit; padding: 0 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+}
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg button, .toggle {
+  min-height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--ink); font: inherit; font-weight: 600;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.toggles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.toggle[aria-pressed="true"] { background: var(--bad); color: #fff; border-color: var(--bad); }
+.pump {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 10px;
+  border-radius: 12px; border: 2px solid var(--line); background: var(--bg);
+}
+.pump strong { font-size: 18px; }
+.pump .hint { margin-left: auto; text-align: right; }
+.pump.on { border-color: var(--ok); color: var(--ok); }
+.pump.fault { border-color: var(--bad); color: var(--bad); }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); flex: none; }
+.pump.on .dot { background: var(--ok); } .pump.fault .dot { background: var(--bad); }
+#result {
+  display: none; margin-bottom: 16px; padding: 12px 14px; border-radius: 12px; font-weight: 600;
+  background: var(--card); border: 2px solid var(--ok); white-space: pre-line;
+}
+#result.show { display: block; }
+#result.warn { border-color: var(--warn); }
+.summary { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 12px; }
+.summary dt { color: var(--muted); }
+.summary dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+details summary { cursor: pointer; color: var(--muted); font-size: 14px; min-height: 32px; }
+pre {
+  margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; max-height: 320px; overflow: auto;
+  background: var(--bg); border-radius: 10px; padding: 10px;
+}
+#log { list-style: none; padding: 0; margin: 0; font-size: 14px; max-height: 240px; overflow: auto; }
+#log li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.actions {
+  position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 10px; justify-content: center;
+  padding: 12px max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--card); border-top: 1px solid var(--line);
+}
+.actions button {
+  flex: 1; max-width: 360px; min-height: 56px; border-radius: 14px; font: inherit; font-weight: 700; font-size: 17px;
+  border: 1px solid var(--accent);
+}
+#send { background: var(--accent); color: var(--accent-ink); }
+#send-all { background: var(--card); color: var(--accent); }
+button:disabled { opacity: .5; }
+#error { color: var(--bad); font-weight: 600; min-height: 1em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Sensor Panel</h1>
+  <span id="broker" class="pill">Broker …</span>
+  <span id="queue" class="pill">Queued 0</span>
+</header>
+<div id="error" role="alert"></div>
+<nav class="tabs" id="tabs" role="tablist"></nav>
+<div id="result" role="status" aria-live="polite"></div>
+<main class="grid">
+  <section class="card">
+    <h2>Crop</h2>
+    <div class="field">
+      <select id="crop" aria-label="Crop profile"></select>
+      <div class="hint" id="crop-hint">Choosing a crop resets sensors to the middle of its target range.</div>
+    </div>
+    <h2>Sensors</h2>
+    <div id="sensors"></div>
+  </section>
+  <section class="card">
+    <h2>Equipment</h2>
+    <div class="field">
+      <div class="pump" id="pump"><span class="dot"></span><strong id="pump-state"></strong><span class="hint" id="pump-why"></span></div>
+      <div class="row"><label>Pump mode</label></div>
+      <div class="seg" id="pump-mode"></div>
+      <div class="hint">Each reading sent while the pump runs adds 2% soil moisture and uses 1% of the tank.</div>
+    </div>
+    <div id="equipment"></div>
+    <h2 class="spaced">Faults</h2>
+    <div class="toggles" id="faults"></div>
+  </section>
+  <section class="card">
+    <h2>Last reading</h2>
+    <dl class="summary" id="summary"></dl>
+    <details><summary>Raw MQTT payload</summary><pre id="payload">Nothing sent yet.</pre></details>
+  </section>
+  <section class="card">
+    <h2>Activity</h2>
+    <ul id="log"></ul>
+  </section>
+</main>
+<div class="actions">
+  <button id="send">Send reading</button>
+  <button id="send-all">Send all plots</button>
+</div>
+<script>
+const SENSORS = [
+  ["temperature_c", "Temperature", "°C", 0.5],
+  ["humidity_pct", "Humidity", "%", 1],
+  ["soil_moisture_pct", "Soil moisture", "%", 1],
+  ["light_lux", "Light", "lux", 500],
+];
+const EQUIPMENT = [
+  ["tank_level_pct", "Water tank", "%", 1],
+  ["battery_pct", "Battery", "%", 1],
+  ["signal_strength_dbm", "Signal", "dBm", 1],
+];
+const FAULT_LABELS = {anomaly: "Heat anomaly", sensor_failure: "Temp sensor failure", pump_fault: "Pump fault",
+  offline: "Offline (queue)", missing: "Drop reading"};
+let state = null, selected = null, busy = false;
+const $ = (id) => document.getElementById(id);
+// Build nodes with textContent only; server-provided strings are never parsed as HTML.
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+function showError(message) { $("error").textContent = message || ""; }
+function log(text) {
+  const li = document.createElement("li");
+  li.textContent = `${new Date().toLocaleTimeString()} · ${text}`;
+  $("log").prepend(li);
+  while ($("log").children.length > 50) $("log").lastChild.remove();
+}
+function current() { return state.devices.find((d) => d.device_id === selected); }
+
+async function refresh() {
+  try {
+    state = await api("/api/state");
+    if (!selected) selected = state.devices[0].device_id;
+    render();
+    showError("");
+  } catch (e) { showError(`Panel unreachable: ${e.message}`); }
+}
+
+async function change(fields) {
+  try {
+    const view = await api(`/api/devices/${selected}`, fields);
+    Object.assign(current(), view);
+    render();
+    showError("");
+  } catch (e) { showError(e.message); refresh(); }
+}
+
+function slider(container, [key, label, unit, step], settings, target, note) {
+  const [min, max] = state.limits[key];
+  const value = settings[key];
+  const out = target && (value < target[0] || value > target[1]);
+  const wrap = document.createElement("div");
+  wrap.className = "field";
+  const row = el("div", "row");
+  const name = el("label", "", label);
+  name.htmlFor = key;
+  const span = el("span", `value${out ? " out" : ""}`, `${value} ${unit}`);
+  row.append(name, span);
+  const input = Object.assign(document.createElement("input"), {type: "range", id: key, min, max, step, value});
+  wrap.append(row, input);
+  if (target) wrap.append(el("div", "hint", `Target ${target[0]}–${target[1]} ${unit}`));
+  if (note) wrap.append(el("div", "hint out-note", note));
+  input.addEventListener("input", () => {
+    const v = Number(input.value);
+    span.textContent = `${v} ${unit}`;
+    span.classList.toggle("out", !!target && (v < target[0] || v > target[1]));
+  });
+  input.addEventListener("change", () => change({[key]: Number(input.value)}));
+  container.append(wrap);
+}
+
+function renderStatus() {
+  const broker = $("broker");
+  broker.textContent = state.broker_connected ? "Broker connected" : "Broker offline";
+  broker.className = `pill ${state.broker_connected ? "ok" : "bad"}`;
+  $("queue").textContent = `Queued ${state.queued}` + (state.dropped ? ` · dropped ${state.dropped}` : "");
+}
+
+function render() {
+  renderStatus();
+
+  $("tabs").replaceChildren(...state.devices.map((d) => {
+    const b = document.createElement("button");
+    b.className = "tab"; b.role = "tab";
+    b.setAttribute("aria-selected", d.device_id === selected);
+    b.append(d.device_id, el("small", "", `${d.crop}${d.settings.faults.length ? " · ⚠︎" : ""}`));
+    b.onclick = () => { selected = d.device_id; render(); };
+    return b;
+  }));
+
+  const device = current();
+  const crops = state.crops[device.crop];
+  $("crop").replaceChildren(...Object.keys(state.crops).map((c) => new Option(c[0].toUpperCase() + c.slice(1), c, false, c === device.crop)));
+
+  const sensors = $("sensors"); sensors.replaceChildren();
+  const faults = device.settings.faults;
+  const tempNote = faults.includes("sensor_failure") ? "Sent as no value (temp sensor failure)"
+    : faults.includes("anomaly") ? `Sent as ${Math.min(100, device.settings.temperature_c + 14)} °C (heat anomaly +14)` : null;
+  SENSORS.forEach((s) => slider(sensors, s, device.settings, crops[s[0]], s[0] === "temperature_c" ? tempNote : null));
+  const equipment = $("equipment"); equipment.replaceChildren();
+  EQUIPMENT.forEach((s) => slider(equipment, s, device.settings, null));
+
+  const pump = device.pump_state, mode = device.settings.pump_mode, min = crops.soil_moisture_pct[0];
+  $("pump").className = `pump ${pump}`;
+  $("pump-state").textContent = {on: "Pump running", off: "Pump off", fault: "Pump fault"}[pump];
+  $("pump-why").textContent = pump === "fault" ? "Fault injected"
+    : device.settings.tank_level_pct <= 0 && mode !== "off" ? "Tank empty"
+    : mode === "auto" ? `Auto: runs below ${min}% soil` : `Manual ${mode}`;
+  $("pump-mode").replaceChildren(...state.pump_modes.map((m) => {
+    const b = document.createElement("button");
+    b.textContent = m[0].toUpperCase() + m.slice(1);
+    b.setAttribute("aria-pressed", device.settings.pump_mode === m);
+    b.onclick = () => change({pump_mode: m});
+    return b;
+  }));
+
+  $("faults").replaceChildren(...state.faults.map((f) => {
+    const b = document.createElement("button");
+    const on = device.settings.faults.includes(f);
+    b.className = "toggle"; b.textContent = FAULT_LABELS[f] || f;
+    b.setAttribute("aria-pressed", on);
+    b.onclick = () => change({faults: on ? device.settings.faults.filter((x) => x !== f) : [...device.settings.faults, f]});
+    return b;
+  }));
+
+  const p = device.last_payload;
+  $("payload").textContent = p ? JSON.stringify(p, null, 2) : "Nothing sent yet.";
+  $("summary").replaceChildren(...(p ? [
+    ["Sent", new Date(p.timestamp).toLocaleTimeString()],
+    ["Temperature", p.metrics.temperature_c === null ? "no value" : `${p.metrics.temperature_c} °C`],
+    ["Soil moisture", `${p.metrics.soil_moisture_pct} %`],
+    ["Pump", p.metrics.pump_state],
+    ["Tank", `${p.metrics.tank_level_pct} %`],
+    ["Connectivity", p.connectivity],
+    ["Flags", p.quality.length ? p.quality.join(", ") : "none"],
+  ] : [["Status", "Nothing sent yet"]]).flatMap(([k, v]) => [el("dt", "", k), el("dd", "", v)]));
+}
+
+async function send(body, label) {
+  if (busy) return;
+  busy = true; $("send").disabled = $("send-all").disabled = true;
+  try {
+    const data = await api("/api/send", body);
+    const lines = data.results.map((r) => {
+      const m = r.payload && r.payload.metrics;
+      const detail = m ? ` · pump ${m.pump_state} · soil ${m.soil_moisture_pct}% · ${m.temperature_c === null ? "temp n/a" : `${m.temperature_c} °C`}${r.payload.quality.length ? ` · ${r.payload.quality.join(", ")}` : ""}` : "";
+      return `${r.device_id} ${{published: "sent ✓", queued: "queued (offline/broker down)", missing: "dropped on purpose"}[r.status]}${detail}`;
+    });
+    lines.forEach(log);
+    const result = $("result");
+    result.textContent = lines.join("\n");
+    result.className = `show${data.results.every((r) => r.status === "published") ? "" : " warn"}`;
+    await refresh();
+  } catch (e) { showError(e.message); log(`${label} failed: ${e.message}`); }
+  finally { busy = false; $("send").disabled = $("send-all").disabled = false; }
+}
+
+$("crop").addEventListener("change", (e) => change({crop: e.target.value}));
+$("send").onclick = () => send({devices: [selected]}, "Send");
+$("send-all").onclick = () => send({all: true}, "Send all");
+refresh();
+// Status only: polling reads panel state and never triggers a publish.
+setInterval(() => { if (!busy && state) api("/api/state").then((s) => { state.broker_connected = s.broker_connected; state.queued = s.queued; state.dropped = s.dropped; renderStatus(); }).catch(() => {}); }, 5000);
+</script>
+</body>
+</html>

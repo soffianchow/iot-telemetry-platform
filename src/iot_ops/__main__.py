@@ -10,6 +10,7 @@ import threading
 import time
 import paho.mqtt.client as mqtt
 from .mqtt import BufferedPublisher, make_client, start
+from .panel import ManualDevice, Panel, serve
 from .simulator import VirtualDevice, active_faults, load_config
 from .store import TelemetryStore
 
@@ -35,6 +36,12 @@ def main():
     consumer.add_argument("--db", default="data/telemetry.db")
     consumer.add_argument("--max-messages", type=positive)
     consumer.add_argument("--max-rows", type=positive, default=10000)
+    panel = commands.add_parser("panel", help="Manual sensor panel; publishes only on request")
+    panel.add_argument("--config", default="config/panel-devices.json")
+    panel.add_argument("--host", default="127.0.0.1")
+    panel.add_argument("--port", type=positive, default=8088)
+    panel.add_argument("--buffer-size", type=positive, default=1000)
+    panel.add_argument("--allowed-host", action="append", default=[], help="Extra hostname the UI may be reached by (e.g. a DNS name)")
     status = commands.add_parser("status")
     status.add_argument("--db", default="data/telemetry.db")
     args = parser.parse_args()
@@ -47,6 +54,21 @@ def main():
     stop = threading.Event()
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda *_: stop.set())
+    if args.command == "panel":
+        config = load_config(args.config)
+        seed = time.time_ns() // 1000
+        devices = [ManualDevice(d["device_id"], d.get("crop", "lettuce"), seed) for d in config["devices"]]
+        client = make_client(f"panel-{os.getpid()}")
+        publisher = BufferedPublisher(client, args.buffer_size)
+        start(client)
+        try:
+            serve(Panel(devices, publisher), args.host, args.port, stop, args.allowed_host)
+        finally:
+            publisher.flush(timeout=1)
+            LOG.info("Panel stopped queued=%s dropped=%s (queue is volatile)", len(publisher.pending), publisher.dropped)
+            client.disconnect()
+            client.loop_stop()
+        return
     if args.command == "simulate":
         if args.interval <= 0:
             parser.error("--interval must be positive")

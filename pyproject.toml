@@ -23,4 +23,4 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.setuptools.package-data]
-iot_ops = ["*.json"]
+iot_ops = ["*.json", "*.html"]

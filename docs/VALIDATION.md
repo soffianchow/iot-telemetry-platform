@@ -35,6 +35,12 @@ The outage drill recorded stored rows increasing from 394 to 464 after recovery,
 pump fault, sensor failure and sequence gaps. These are sample run observations, not
 throughput or availability benchmarks.
 
+Manual panel run (panel and consumer against an isolated broker): no messages were stored
+while idle; one plot sent with dry soil reported the pump running and soil rising 2% per
+reading; an offline plot queued its reading and forwarded it in sequence after the fault
+was cleared. A separate run on a Raspberry Pi (Python 3.13, aarch64) passed the unit
+suite and published through an SSH reverse tunnel to the Compose processor.
+
 ## Limits of the evidence
 
 - Terraform validation does not test AWS permissions, quotas or live service behavior.

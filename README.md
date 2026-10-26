@@ -60,6 +60,13 @@ make terraform
 # uv run python -m iot_ops simulate --config config/devices.json
 ```
 
+### Manual sensor panel
+
+`make panel` serves a touch-friendly web panel (default port 8088) for setting crop
+profiles, sensor values, pump state and faults per plot, then publishing single readings
+on demand. It can run on a separate host such as a Raspberry Pi; see [panel](docs/PANEL.md).
+Use `make receiver` to run only the broker and processor while the panel drives input.
+
 If port 1883 is occupied: `MQTT_PORT=1884 docker compose up -d --build`.
 Container-to-container traffic still uses port 1883. Host tools then need `MQTT_PORT=1884`.
 

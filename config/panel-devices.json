@@ -1,0 +1,9 @@
+{
+  "description": "Manually controlled plots for the sensor panel; readings publish only on request.",
+  "devices": [
+    {"device_id": "plot-01", "crop": "lettuce"},
+    {"device_id": "plot-02", "crop": "tomato"},
+    {"device_id": "plot-03", "crop": "chili"},
+    {"device_id": "plot-04", "crop": "strawberry"}
+  ]
+}

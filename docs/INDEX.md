@@ -8,6 +8,7 @@ Current status: local MQTT implementation with undeployed AWS infrastructure sca
 | [Architecture](ARCHITECTURE.md) | Data flow, delivery guarantees and security boundaries |
 | [Engineering decisions](ENGINEERING_DECISIONS.md) | Technology choices and tradeoffs |
 | [MQTT contract](MQTT.md) | Topics, payload schema and fault controls |
+| [Manual panel](PANEL.md) | On-demand readings, crop profiles and remote panel host |
 | [AWS design](AWS.md) | Terraform modules, IAM boundaries and cloud limitations |
 | [Validation](VALIDATION.md) | Test evidence, reproduction commands and verification scope |
 | [Roadmap](ROADMAP.md) | Proposed technical milestones |
