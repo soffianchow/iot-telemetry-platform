@@ -3,14 +3,42 @@ from collections import deque
 import json
 import logging
 import os
+from pathlib import Path
+import ssl
 import threading
 import paho.mqtt.client as mqtt
 
 LOG = logging.getLogger(__name__)
 
 
-def make_client(client_id: str, *, manual_ack: bool = False) -> mqtt.Client:
+def tls_identity(device_id: str | None = None) -> tuple[str, str | None, str | None] | None:
+    """Return (ca, cert, key) when MQTT_TLS_CA is set; MQTT_CERT_DIR selects a per-device identity."""
+    ca, cert_dir = os.getenv("MQTT_TLS_CA"), os.getenv("MQTT_CERT_DIR")
+    cert, key = os.getenv("MQTT_TLS_CERT"), os.getenv("MQTT_TLS_KEY")
+    # Partial TLS settings must fail loudly rather than fall back to plaintext.
+    if not ca:
+        if cert or key or cert_dir:
+            raise ValueError("MQTT_TLS_CA is required when client certificates are configured")
+        return None
+    if bool(cert) != bool(key):
+        raise ValueError("MQTT_TLS_CERT and MQTT_TLS_KEY must be set together")
+    if cert_dir and not device_id and not cert:
+        raise ValueError("MQTT_CERT_DIR requires a device ID or a shared certificate pair")
+    if device_id and cert_dir:
+        return ca, str(Path(cert_dir) / f"{device_id}.cert.pem"), str(Path(cert_dir) / f"{device_id}.key.pem")
+    return ca, cert, key
+
+
+def make_client(client_id: str, *, manual_ack: bool = False, tls: tuple[str, str | None, str | None] | None = None) -> mqtt.Client:
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id, manual_ack=manual_ack, clean_session=not manual_ack)
+    if tls:
+        ca, cert, key = tls
+        # Verified server certificate and hostname, TLS 1.2+, optional client certificate (mutual TLS).
+        context = ssl.create_default_context(cafile=ca)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        if cert:
+            context.load_cert_chain(cert, key)
+        client.tls_set_context(context)
     client.reconnect_delay_set(min_delay=1, max_delay=30)
     client.max_inflight_messages_set(1)
     client.max_queued_messages_set(1)
@@ -20,7 +48,8 @@ def make_client(client_id: str, *, manual_ack: bool = False) -> mqtt.Client:
 
 
 def start(client: mqtt.Client):
-    client.connect_async(os.getenv("MQTT_HOST", "localhost"), int(os.getenv("MQTT_PORT", "1883")), keepalive=30)
+    default_port = "8883" if os.getenv("MQTT_TLS_CA") else "1883"
+    client.connect_async(os.getenv("MQTT_HOST", "localhost"), int(os.getenv("MQTT_PORT", default_port)), keepalive=30)
     client.loop_start()
 
 

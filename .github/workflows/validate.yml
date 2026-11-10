@@ -17,6 +17,8 @@ jobs:
       - run: uv run pytest -q tests/unit
       - run: uv run pytest -q infra/terraform/modules/lambda/test_handler.py
       - run: uv run python infra/terraform/build_lambda.py
+      - name: Verify mutual TLS and device topic isolation
+        run: make tls-test
   mqtt-integration:
     runs-on: ubuntu-latest
     steps:

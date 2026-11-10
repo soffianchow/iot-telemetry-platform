@@ -15,6 +15,20 @@ This is a local integration reference system; AWS resources have not been deploy
 [CI evidence for the implementation](https://github.com/soffianchow/iot-telemetry-platform/actions/workflows/validate.yml).
 The provider lock includes macOS ARM64 and Linux AMD64 package checksums.
 
+## Mutual TLS verification — 2026-11-10
+
+| Check | Result | Scope |
+|---|---|---|
+| Python tests | 113 passed | 105 unit tests and 8 Lambda handler tests |
+| Mutual-TLS integration | 6 passed | Real certificate verification, device topic ACLs and panel identities |
+| Plaintext Docker regression | 107 passed, 6 skipped | 105 unit and 2 MQTT tests; TLS tests run separately |
+
+The TLS suite first proves a valid client can connect, then checks that missing client
+certificates, an untrusted CA and a wrong server hostname are rejected. It also checks
+own-topic publishing, cross-device denial, claimed-ID isolation and two independent
+panel connections. The test broker and certificates are temporary and removed on exit.
+These results establish local Mosquitto behavior; they do not establish AWS authorization.
+
 ## Reproduce
 
 ```sh
@@ -22,6 +36,7 @@ make setup
 make test
 uv run pytest -q infra/terraform/modules/lambda/test_handler.py
 make integration
+make tls-test
 make terraform
 uv run python infra/terraform/build_lambda.py
 ```

@@ -9,7 +9,7 @@ from jsonschema import ValidationError
 import threading
 import time
 import paho.mqtt.client as mqtt
-from .mqtt import BufferedPublisher, make_client, start
+from .mqtt import BufferedPublisher, make_client, start, tls_identity
 from .panel import ManualDevice, Panel, serve
 from .simulator import VirtualDevice, active_faults, load_config
 from .store import TelemetryStore
@@ -58,16 +58,23 @@ def main():
         config = load_config(args.config)
         seed = time.time_ns() // 1000
         devices = [ManualDevice(d["device_id"], d.get("crop", "lettuce"), seed) for d in config["devices"]]
-        client = make_client(f"panel-{os.getpid()}")
-        publisher = BufferedPublisher(client, args.buffer_size)
-        start(client)
+        if os.getenv("MQTT_CERT_DIR"):
+            # Per-device certificates: each plot connects as itself, so the broker can bind identity to topic.
+            publishers = {d.device_id: BufferedPublisher(make_client(d.device_id, tls=tls_identity(d.device_id)), args.buffer_size) for d in devices}
+        else:
+            shared = BufferedPublisher(make_client(f"panel-{os.getpid()}", tls=tls_identity()), args.buffer_size)
+            publishers = {d.device_id: shared for d in devices}
+        panel = Panel(devices, publishers)
+        for publisher in panel.connections:
+            start(publisher.client)
         try:
-            serve(Panel(devices, publisher), args.host, args.port, stop, args.allowed_host)
+            serve(panel, args.host, args.port, stop, args.allowed_host)
         finally:
-            publisher.flush(timeout=1)
-            LOG.info("Panel stopped queued=%s dropped=%s (queue is volatile)", len(publisher.pending), publisher.dropped)
-            client.disconnect()
-            client.loop_stop()
+            for publisher in panel.connections:
+                publisher.flush(timeout=1)
+                publisher.client.disconnect()
+                publisher.client.loop_stop()
+            LOG.info("Panel stopped queued=%s (queue is volatile)", panel.queued())
         return
     if args.command == "simulate":
         if args.interval <= 0:
@@ -76,7 +83,7 @@ def main():
         # Microsecond wall-clock seed avoids sequence reuse across normal restarts.
         seed = time.time_ns() // 1000
         devices = [VirtualDevice(d, i, seed) for i, d in enumerate(config["devices"])]
-        client = make_client(f"simulator-{os.getpid()}")
+        client = make_client(f"simulator-{os.getpid()}", tls=tls_identity())
         publisher = BufferedPublisher(client, args.buffer_size)
         start(client)
         cycle = 0
@@ -101,7 +108,7 @@ def main():
         received = 0
         storage_failed = False
         store = None
-        client = make_client(os.getenv("MQTT_CLIENT_ID", "iot-ops-consumer"), manual_ack=True)
+        client = make_client(os.getenv("MQTT_CLIENT_ID", "iot-ops-consumer"), manual_ack=True, tls=tls_identity())
         def connected(c, userdata, flags, reason_code, properties):
             if reason_code == 0:
                 c.subscribe("iot-ops/devices/+/telemetry", qos=1)

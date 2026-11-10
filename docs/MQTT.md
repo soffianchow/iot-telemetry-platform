@@ -59,3 +59,44 @@ bounded queued messages while a subscriber is absent. They are not load-balancin
 CLI controls: `simulate --cycles N --interval SECONDS --buffer-size N`,
 `consume --db PATH --max-rows N --max-messages N`, and `status --db PATH`.
 `--max-messages` counts accepted unique rows. Infinite service mode is the default.
+
+## TLS and device identity
+
+Plain MQTT on loopback is the local default. Setting `MQTT_TLS_CA` switches every client
+(simulator, consumer, panel) to TLS 1.2+ with a verified server certificate and hostname,
+and the default port to 8883. Client certificates enable mutual TLS:
+
+| Variable | Meaning |
+|---|---|
+| `MQTT_TLS_CA` | CA bundle used to verify the broker (for AWS IoT, the Amazon root CA) |
+| `MQTT_TLS_CERT` / `MQTT_TLS_KEY` | One shared client certificate and key |
+| `MQTT_CERT_DIR` | Per-device identities: `<device_id>.cert.pem` and `<device_id>.key.pem` |
+
+With `MQTT_CERT_DIR`, the panel opens one connection per plot using the plot ID as client
+ID, matching the per-device AWS IoT policy (connect only as itself, publish only to its own
+topic). `MQTT_CERT_DIR` is used by the panel; the simulator and consumer need the shared
+certificate pair instead. A directory-only configuration without a device identity fails
+at startup rather than silently omitting the client certificate. When both modes are
+configured, per-device panel sessions use the directory; clients without a device ID use
+the shared pair. Partial certificate settings are rejected.
+
+`make tls-test` starts a throwaway mutual-TLS Mosquitto broker with a per-identity topic
+ACL. Mosquitto replaces the client ID with the certificate identity; AWS IoT instead
+checks the requested client ID against the device policy. The local test proves topic
+isolation, not exact AWS authorization behavior.
+
+The suite verifies successful device publishing, rejection of connections without a
+client certificate, cross-device publish denial, certificate identity taking precedence
+over a claimed client ID, rejection of an untrusted CA and a wrong server hostname, and
+independent panel connections. Positive controls first establish that the broker works.
+
+The runner requires Docker, OpenSSL and uv. It binds only loopback on port 18884
+(override with `TLS_TEST_PORT`), uses a digest-pinned Mosquitto image and removes only its
+own container. All test private keys are owner-only. Only broker material is mounted into
+the non-root, read-only container; the CA signing key is deleted before startup. Test
+certificates are generated per run and removed on exit. No AWS credentials are involved.
+
+This adds optional TLS client support and a reproducible test broker. The default Compose
+broker is still local plaintext MQTT; this change does not turn its listener into TLS or
+add authentication to the HTTP panel. Certificates, rotation and revocation for a deployed
+system remain separate operational work.

@@ -83,3 +83,10 @@ Out-of-range or unknown fields return 400 and leave the plot unchanged; unknown 
 - No authentication or TLS on the panel; bind it to a trusted interface only.
 - Settings live in memory and reset to crop defaults when the process restarts.
 - The physical model is deliberately simple and is not agronomic guidance.
+
+## Optional MQTT mutual TLS
+
+The panel can hold one MQTT connection per plot with `MQTT_TLS_CA` and `MQTT_CERT_DIR`.
+Each plot then uses its own client certificate and ID. See the [TLS contract and test
+runner](MQTT.md#tls-and-device-identity) for configuration and verification. This protects
+the MQTT transport; it does not add TLS or authentication to the panel's HTTP listener.

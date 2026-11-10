@@ -188,3 +188,20 @@ def test_reading_reports_operator_value_then_waters_for_next_step():
     assert (first["soil_moisture_pct"], first["pump_state"], first["tank_level_pct"]) == (40, "on", 90)
     second = device.reading()["metrics"]
     assert (second["soil_moisture_pct"], second["tank_level_pct"]) == (42, 89)
+
+
+def test_per_device_connections_publish_independently():
+    clients, publishers = {}, {}
+    for device_id in ("plot-01", "plot-02"):
+        client = Mock()
+        info = Mock(rc=mqtt.MQTT_ERR_SUCCESS)
+        info.is_published.return_value = True
+        client.publish.return_value = info
+        clients[device_id], publishers[device_id] = client, BufferedPublisher(client, 10)
+    publishers["plot-01"].connected.set()
+    p = Panel([ManualDevice("plot-01"), ManualDevice("plot-02")], publishers)
+    assert len(p.connections) == 2 and p.state()["broker_connected"] is False
+    statuses = {r["device_id"]: r["status"] for r in p.send(["plot-01", "plot-02"])}
+    assert statuses == {"plot-01": "published", "plot-02": "queued"}
+    assert clients["plot-01"].publish.call_args.args[0] == "iot-ops/devices/plot-01/telemetry"
+    clients["plot-02"].publish.assert_not_called()

@@ -128,16 +128,21 @@ class ManualDevice:
 
 
 class Panel:
-    def __init__(self, devices: list[ManualDevice], publisher: BufferedPublisher):
+    def __init__(self, devices: list[ManualDevice], publishers: BufferedPublisher | dict[str, BufferedPublisher]):
         self.devices = {d.device_id: d for d in devices}
-        self.publisher = publisher
+        # One shared connection locally, or one per device when each holds its own certificate.
+        self.publishers = publishers if isinstance(publishers, dict) else {i: publishers for i in self.devices}
+        self.connections = list({id(p): p for p in self.publishers.values()}.values())
         self.lock = threading.Lock()
+
+    def queued(self) -> int:
+        return sum(len(p.pending) for p in self.connections)
 
     def state(self) -> dict:
         with self.lock:
             return {
-                "broker_connected": self.publisher.connected.is_set(), "queued": len(self.publisher.pending),
-                "dropped": self.publisher.dropped, "crops": CROPS, "faults": FAULTS, "pump_modes": PUMP_MODES,
+                "broker_connected": all(p.connected.is_set() for p in self.connections), "queued": self.queued(),
+                "dropped": sum(p.dropped for p in self.connections), "crops": CROPS, "faults": FAULTS, "pump_modes": PUMP_MODES,
                 "limits": LIMITS, "devices": [d.view() for d in self.devices.values()],
             }
 
@@ -160,14 +165,15 @@ class Panel:
             sent = [(d, d.reading()) for d in devices]
             for _, payload in sent:
                 if payload:
-                    self.publisher.enqueue(payload)
+                    self.publishers[payload["device_id"]].enqueue(payload)
             offline = {i for i, d in self.devices.items() if "offline" in d.settings["faults"]}
-            self.publisher.flush(offline)
+            for publisher in self.connections:
+                publisher.flush(offline)
             results = []
             for device, payload in sent:
                 if payload is None:
                     status = "missing"
-                elif any(p is payload for p in self.publisher.pending):
+                elif any(p is payload for p in self.publishers[device.device_id].pending):
                     status = "queued"
                 else:
                     status = "published"
@@ -248,7 +254,7 @@ def make_handler(panel: Panel, allowed_hosts: set[str] | None = None):
                     ids = list(panel.devices) if body.get("all") else body.get("devices")
                     if not isinstance(ids, list) or not ids:
                         raise ValueError("Provide a non-empty devices list or all=true")
-                    self.reply(200, {"results": panel.send(ids), "queued": len(panel.publisher.pending)})
+                    self.reply(200, {"results": panel.send(ids), "queued": panel.queued()})
                 else:
                     self.reply(404, {"error": "not found"})
             except KeyError as error:

@@ -52,6 +52,8 @@ A Docker Desktop restart or sleeping Mac pauses availability.
 ```sh
 # Containerized unit + actual MQTT integration tests (isolated Compose project on port 18883)
 make integration
+# Certificate verification and per-device mutual-TLS topic isolation
+make tls-test
 # Validate infrastructure without AWS authentication or deployment
 make terraform
 # Host alternative: start broker only, then use two terminals

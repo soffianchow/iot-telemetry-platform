@@ -1,10 +1,12 @@
-.PHONY: setup test integration up receiver panel down status terraform
+.PHONY: setup test integration tls-test up receiver panel down status terraform
 setup:
 	uv sync --python 3.11 --extra dev
 test:
 	uv run pytest -q tests/unit
 integration:
 	./scripts/test-docker.sh
+tls-test:
+	./scripts/test-tls.sh
 up:
 	docker compose up -d --build broker processor simulator
 receiver:
